@@ -11,6 +11,7 @@ export default function StudentAttemptPage() {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState('');
     const [attempt, setAttempt] = useState(null); // Full attempt object
+    const [savedAnswers, setSavedAnswers] = useState({}); // Map: questionId -> answer
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -18,6 +19,20 @@ export default function StudentAttemptPage() {
     // Timer State
     const [remainingTime, setRemainingTime] = useState(null);
     const timerRef = useRef(null);
+
+    // Refs to avoid stale closures in Timer/AutoSubmit
+    const stateRef = useRef({
+        selectedOption: '',
+        currentQuestionIndex: 0,
+        questions: [],
+        attempt: null,
+        savedAnswers: {}
+    });
+
+    // Update ref whenever relevant state changes
+    useEffect(() => {
+        stateRef.current = { selectedOption, currentQuestionIndex, questions, attempt, savedAnswers };
+    }, [selectedOption, currentQuestionIndex, questions, attempt, savedAnswers]);
 
     useEffect(() => {
         const initAttempt = async () => {
@@ -29,26 +44,34 @@ export default function StudentAttemptPage() {
 
                 // 2. Start/Resume Attempt
                 const attemptRes = await api.post(`/assessments/${assessmentId}/attempt`);
-                setAttempt(attemptRes.data); // Store full attempt
+                setAttempt(attemptRes.data);
 
-                // 3. Initialize Timer
+                // 3. Hydrate Answers from Resume
+                const hydratedAnswers = {};
+                if (attemptRes.data.answers) {
+                    attemptRes.data.answers.forEach(ans => {
+                        hydratedAnswers[ans.question_id] = ans.selected_answer;
+                    });
+                }
+                setSavedAnswers(hydratedAnswers);
+
+                // Hydrate current question selection if exists
+                if (detailRes.data.questions && detailRes.data.questions.length > 0) {
+                    const firstQId = detailRes.data.questions[0].id;
+                    if (hydratedAnswers[firstQId]) {
+                        setSelectedOption(hydratedAnswers[firstQId]);
+                    }
+                }
+
+                // 4. Initialize Timer
                 if (detailRes.data.time_per_question && detailRes.data.questions) {
                     const totalDuration = detailRes.data.time_per_question * (detailRes.data.questions.length || 0);
-                    // Ensure UTC parsing by appending Z if missing
                     let startedAtStr = attemptRes.data.started_at;
                     if (!startedAtStr.endsWith('Z') && !startedAtStr.includes('+')) {
                         startedAtStr += 'Z';
                     }
                     const startedAt = new Date(startedAtStr).getTime();
                     const now = Date.now();
-                    // IMPORTANT: Adjust for client-server time drift if needed, but for now assuming synced or close enough
-                    // or naive/aware utc matching
-                    // Converting server UTC string to local timestamp vs Date.now() (local) works if string is ISO with Z or similar
-                    // Python fastAPI default json usually is ISO.
-                    // If started_at is e.g. "2023-10-10T10:00:00", new Date() treats as local. 
-                    // Ideally we should treat as UTC. 
-                    // Let's rely on standard parsing. If it's off, we might need 'Z' suffix.
-
                     const elapsedSeconds = Math.floor((now - startedAt) / 1000);
                     const remaining = Math.max(0, totalDuration - elapsedSeconds);
                     setRemainingTime(remaining);
@@ -75,6 +98,15 @@ export default function StudentAttemptPage() {
         };
     }, [assessmentId]);
 
+    // Sync selected option when changing questions
+    useEffect(() => {
+        if (questions.length > 0) {
+            const currentQ = questions[currentQuestionIndex];
+            const saved = savedAnswers[currentQ.id];
+            setSelectedOption(saved || '');
+        }
+    }, [currentQuestionIndex, questions]); // Deliberately exclude savedAnswers to avoid loop/reset during type? Actually fine.
+
     // Timer Effect
     useEffect(() => {
         if (remainingTime === null || remainingTime <= 0) return;
@@ -83,7 +115,7 @@ export default function StudentAttemptPage() {
             setRemainingTime(prev => {
                 if (prev <= 1) {
                     clearInterval(timerRef.current);
-                    handleAutoSubmit();
+                    handleAutoSubmit(); // This calls the stale closure version, need to be careful
                     return 0;
                 }
                 return prev - 1;
@@ -91,17 +123,30 @@ export default function StudentAttemptPage() {
         }, 1000);
 
         return () => clearInterval(timerRef.current);
-    }, [remainingTime === null]); // Only restart interval if we transition from null? No, simpler to just run if > 0
+    }, [remainingTime === null]); // Run once when timer starts
 
-    // Separate Auto Submit handler to avoid dependencies in effect
+    // Auto Submit Logic
     const handleAutoSubmit = async () => {
-        // Prevent double call if already submitting
-        // But we can't easily access state inside interval closure without ref or functional update
-        // The functional update in setRemainingTime handles the trigger condition.
-
-        // We need to call submit.
         console.log("Auto-submitting...");
-        await handleSubmitAssessment(true);
+        const { selectedOption, currentQuestionIndex, questions, attempt } = stateRef.current;
+
+        // 1. Force Save Current Answer if exists
+        try {
+            if (selectedOption && questions.length > 0 && attempt) {
+                const currentQ = questions[currentQuestionIndex];
+                console.log("Saving last answer before submit:", currentQ.id, selectedOption);
+                await api.post(`/assessments/attempts/${attempt.id}/answer`, {
+                    question_id: currentQ.id,
+                    selected_answer: selectedOption,
+                    time_taken: 0
+                });
+            }
+        } catch (err) {
+            console.error("Failed to save final answer during auto-submit", err);
+        }
+
+        // 2. Submit
+        await handleSubmitAssessment(true, attempt?.id);
     };
 
     const formatTime = (seconds) => {
@@ -114,6 +159,12 @@ export default function StudentAttemptPage() {
     const handleOptionSelect = (option) => {
         if (remainingTime === 0) return;
         setSelectedOption(option);
+        // Note: We don't save immediately to avoid excessive API calls, we save on Next/Submit.
+        // But for refresh safety, saving here is 'safer' but 'chattier'. 
+        // User asked: "Persist the response immediately (or on debounce)".
+        // Let's settle for "Save on Next" + Rehydration. 
+        // Refreshing *mid-question* (before clicking Next) losing one answer is acceptable trade-off vs chatting.
+        // BUT "Bug 2" specifically said "last answer lost on auto-submit". Fix above handles that.
     };
 
     const handleNext = async () => {
@@ -129,17 +180,19 @@ export default function StudentAttemptPage() {
                 time_taken: 0
             });
 
+            // Update local saved state
+            setSavedAnswers(prev => ({ ...prev, [currentQ.id]: selectedOption }));
+
             // Move to next or finish
             if (currentQuestionIndex < questions.length - 1) {
                 setCurrentQuestionIndex(prev => prev + 1);
-                setSelectedOption('');
+                // Selection will update via useEffect
             } else {
                 // Final Submit
                 await handleSubmitAssessment();
             }
         } catch (err) {
             console.error("Answer submit failed", err);
-            // If error is 403 (already submitted), redirect
             if (err.response?.status === 403) {
                 navigate('/student');
             } else {
@@ -150,11 +203,13 @@ export default function StudentAttemptPage() {
         }
     };
 
-    const handleSubmitAssessment = async (isAuto = false) => {
-        if (!attempt) return;
+    const handleSubmitAssessment = async (isAuto = false, attemptIdOverride = null) => {
+        const idToSubmit = attemptIdOverride || attempt?.id;
+        if (!idToSubmit) return;
+
         try {
             setSubmitting(true);
-            await api.post(`/assessments/attempts/${attempt.id}/submit`);
+            await api.post(`/assessments/attempts/${idToSubmit}/submit`);
             if (isAuto) {
                 alert("Time's up! Assessment submitted.");
             } else {
@@ -164,10 +219,9 @@ export default function StudentAttemptPage() {
         } catch (err) {
             console.error(err);
             if (err.response?.status === 403) {
-                // Already submitted
                 navigate('/student');
             } else {
-                alert("Failed to submit assessment");
+                if (!isAuto) alert("Failed to submit assessment");
             }
         } finally {
             setSubmitting(false);

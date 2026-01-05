@@ -38,6 +38,10 @@ class QuestionCreate(SQLModel):
 class AttemptStart(SQLModel):
     assessment_id: int
 
+class AnswerRead(SQLModel):
+    question_id: int
+    selected_answer: str
+
 class AttemptRead(SQLModel):
     id: int
     assessment_id: int
@@ -45,6 +49,7 @@ class AttemptRead(SQLModel):
     score: Optional[float] = None
     started_at: datetime
     submitted_at: Optional[datetime] = None
+    answers: List[AnswerRead] = []
 
 class AnswerSubmit(SQLModel):
     question_id: int

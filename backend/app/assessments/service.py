@@ -203,11 +203,30 @@ def start_attempt_service(session: Session, assessment_id: int, user_id: int) ->
             Attempt.student_id == user_id
         )
     ).first()
-    if existing:
-         if existing.submitted_at:
-             raise HTTPException(status_code=403, detail="Assessment already submitted")
-         return existing
     
+    if existing:
+        if existing.submitted_at:
+             raise HTTPException(status_code=403, detail="Assessment already submitted")
+        
+        # Hydrate answers for resume
+        answers_db = session.exec(
+            select(AttemptAnswer).where(AttemptAnswer.attempt_id == existing.id)
+        ).all()
+        # Create a transient object with answers to match schema (SQLModel response handling will parse this)
+        # We can't just attach to SQLModel ORM object easily without relationship, but pydantic conversion works on dict mostly.
+        # Let's rely on FastAPI's response_model parsing. We need to construct a dict or object that has 'answers'.
+        # Since 'existing' is an ORM object, let's convert to dict and add answers.
+        
+        # Correction: The logic below constructs a response compatible with AttemptRead
+        # We need to import AnswerRead to be safe or just use dicts
+        existing_dict = existing.dict()
+        existing_dict["answers"] = [{"question_id": a.question_id, "selected_answer": a.selected_answer} for a in answers_db]
+        
+        # We need to return something that FastAPI can validate against AttemptRead.
+        # Returning a Pydantic model or dict works.
+        from app.assessments.schemas import AttemptRead, AnswerRead
+        return AttemptRead(**existing_dict)
+
     attempt = Attempt(
         assessment_id=assessment_id,
         student_id=user_id,
@@ -216,7 +235,10 @@ def start_attempt_service(session: Session, assessment_id: int, user_id: int) ->
     session.add(attempt)
     session.commit()
     session.refresh(attempt)
-    return attempt
+    
+    # New attempt has no answers
+    from app.assessments.schemas import AttemptRead
+    return AttemptRead(**attempt.dict(), answers=[])
 
 def submit_answer_service(session: Session, attempt_id: int, question_id: int, answer: str, time: int, user_id: int):
     attempt = session.get(Attempt, attempt_id)

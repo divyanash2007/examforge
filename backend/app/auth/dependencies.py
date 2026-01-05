@@ -22,17 +22,21 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        # print(f"DEBUG AUTH: verifying token {token[:10]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("sub")
         role: str = payload.get("role")
         if user_id is None or role is None:
+            print("DEBUG AUTH: user_id or role missing in payload")
             raise credentials_exception
         token_data = TokenData(user_id=user_id, role=role)
-    except JWTError:
+    except JWTError as e:
+        print(f"DEBUG AUTH: JWTError: {e}")
         raise credentials_exception
     
     user = session.get(User, token_data.user_id)
     if user is None:
+        print(f"DEBUG AUTH: User {token_data.user_id} not found in DB")
         raise credentials_exception
     return user
 
