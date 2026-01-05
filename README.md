@@ -1,80 +1,90 @@
-# ExamForge - Gamified Classroom & Assessment Platform
+# ExamForge 🎓
 
-A comprehensive platform for managing classrooms, conducting timed assessments, and analyzing student performance in real-time.
+**A Production-Grade Monitoring & Assessment Platform**
 
-## Features
+ExamForge is a sophisticated educational platform designed to bridge the gap between rigorous assessment protocols and modern user experience. It features a robust exam engine with **live proctoring capabilities**, real-time student monitoring, and comprehensive performance analytics.
 
--   **Role-Based Access**: Distinct portals for Teachers and Students.
--   **Classroom Management**: Create rooms, generate join codes, and manage members.
--   **Assessment Engine**:
-    -   Create timed exams with various question types.
-    -   **Auto-Submit**: Exams automatically submit when time expires.
-    -   **Resume Capability**: Students can refresh or rejoin without losing time or progress.
--   **Real-Time Monitoring**: Teachers can watch student statuses live (In Progress / Submitted) with remaining time tracking.
--   **Analytics Dashboard**: Detailed breakdown of class performance, question-level analysis, and score distributions.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/frontend-React_19-61DAFB.svg)
+![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)
+![PostgreSQL](https://img.shields.io/badge/database-PostgreSQL-336791.svg)
 
-## Tech Stack
+---
 
-### Backend
--   **Framework**: FastAPI (Python)
--   **Database**: PostgreSQL / SQLite (via SQLModel)
--   **Authentication**: JWT (OAuth2)
--   **Tools**: Alembic (Migrations), Pydantic
+## 🚀 Key Features
 
-### Frontend
--   **Framework**: React 19 (Vite)
--   **Styling**: Tailwind CSS v4
--   **Icons**: Lucide React
--   **HTTP Client**: Axios
+### 👨‍🏫 For Teachers
+*   **Live Attempt Monitor**: Watch student progress in real-time (In Progress / Submitted) with dynamic remaining time tracking.
+*   **Deep Analytics**: Visualize performance metrics, including item analysis (distractor efficiency) and score distributions.
+*   **Classroom Management**: Secure room creation with role-based access control.
+*   **Flexible Assessments**: Create timed exams with auto-submission and strict duration enforcement.
 
-## Getting Started
+### 👨‍🎓 For Students
+*   **Resilient Exam Engine**:
+    *   **Auto-Save & Resume**: Protection against browser crashes or refreshes.
+    *   **Server-Side Timer**: Tamper-proof countdowns synchronized with the backend.
+    *   **Auto-Submit**: Enforced submission when time expires.
+*   **Instant Feedback**: Detailed report cards available immediately after assessment closure.
+
+---
+
+## 🛠️ Technology Stack
+
+*   **Frontend**: React 19, Tailwind CSS v4, Lucide Icons, Axios.
+*   **Backend**: FastAPI (Python 3.10+), SQLModel (SQLAlchemy + Pydantic).
+*   **Database**: PostgreSQL / SQLite (Development).
+*   **Security**: OAuth2 with JWT Authentication.
+
+---
+
+## ⚡ Quick Start
 
 ### Prerequisites
--   Node.js (v18+)
--   Python (v3.10+)
--   PostgreSQL (optional, defaults to SQLite if configured)
+*   Node.js (v18+)
+*   Python (v3.10+)
 
-### Installation
+### 1. Backend Setup
 
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/divyanash2007/examforge.git
-    cd examforge
-    ```
+```bash
+cd backend
 
-2.  **Backend Setup**
-    ```bash
-    cd backend
-    python -m venv venv
-    # Windows
-    venv\Scripts\activate
-    # Mac/Linux
-    # source venv/bin/activate
-    
-    pip install -r requirements.txt
-    
-    # Run Migrations
-    alembic upgrade head
-    
-    # Start Server
-    uvicorn app.main:app --reload
-    ```
+# Create virtual environment
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 
-3.  **Frontend Setup**
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
+# Install dependencies
+pip install -r requirements.txt
 
-## Project Structure
+# Run migrations
+alembic upgrade head
 
--   `/backend`: FastAPI application, models, and business logic.
-    -   `/app/assessments`: Exam engine logic.
-    -   `/app/analytics`: Performance aggregation.
-    -   `/app/monitor`: Real-time monitoring.
--   `/frontend`: React SPA.
+# Start API server
+uvicorn app.main:app --reload
+```
+*Server runs at: `http://localhost:8000`*
 
-## License
+### 2. Frontend Setup
 
-MIT
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+*App runs at: `http://localhost:5173`*
+
+---
+
+## 🔒 Security & Architecture
+*   **Stateless Auth**: Fully decoupled frontend and backend using JWT.
+*   **Validation**: Pydantic schemas ensure strict data validation on all inputs.
+*   **Read-Only Monitoring**: The live monitor is architected as a read-only observer to prevent load on the core transactional exam engine.
+
+---
+
+## 📄 License
+MIT © 2026
