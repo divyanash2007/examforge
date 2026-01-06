@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Layout from '../components/Layout';
-import { CheckCircle, XCircle, PlayCircle, BookOpen, AlertCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, PlayCircle, BookOpen, AlertCircle, Clock, ChevronDown } from 'lucide-react';
 
 export default function StudentPracticeSetupPage() {
     const navigate = useNavigate();
     const [questions, setQuestions] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
     const [timeLimit, setTimeLimit] = useState(null); // null = Unlimited
+    const [filter, setFilter] = useState('all'); // 'all', 'incorrect', 'correct'
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState('');
@@ -103,11 +104,14 @@ export default function StudentPracticeSetupPage() {
                             View History
                         </button>
 
-                        <div className="relative">
+                        <div className="relative group">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 group-hover:text-blue-500 transition-colors">
+                                <Clock size={16} />
+                            </div>
                             <select
                                 value={timeLimit || ''}
                                 onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
-                                className="appearance-none bg-white border border-slate-300 text-slate-700 py-2.5 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium shadow-sm transition-shadow cursor-pointer hover:border-slate-400"
+                                className="appearance-none w-full bg-white border border-slate-200 text-slate-700 text-sm py-2.5 pl-10 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium shadow-sm transition-all cursor-pointer hover:border-blue-300"
                             >
                                 <option value="">Unlimited Time</option>
                                 <option value="15">15 Minutes</option>
@@ -115,8 +119,8 @@ export default function StudentPracticeSetupPage() {
                                 <option value="45">45 Minutes</option>
                                 <option value="60">1 Hour</option>
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                <Clock size={16} />
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 group-hover:text-slate-600 transition-colors">
+                                <ChevronDown size={16} />
                             </div>
                         </div>
 
@@ -152,48 +156,119 @@ export default function StudentPracticeSetupPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                            <span className="text-sm font-medium text-slate-600">
-                                {selectedIds.length} questions selected
-                            </span>
-                            <button
-                                onClick={toggleAll}
-                                className="text-sm text-blue-600 font-medium hover:underline"
-                            >
-                                {selectedIds.length === questions.length ? 'Deselect All' : 'Select All'}
-                            </button>
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                            {questions.map(q => (
-                                <label
-                                    key={q.id}
-                                    className={`flex items-start gap-4 p-4 cursor-pointer transition-colors ${selectedIds.includes(q.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'
-                                        }`}
+                    <div className="space-y-4">
+                        {/* Filters and Selection Summary */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setFilter('all')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedIds.includes(q.id)}
-                                        onChange={() => toggleQuestion(q.id)}
-                                        className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                                    />
-                                    <div className="flex-1">
-                                        <p className="text-slate-900 font-medium">{q.question_text}</p>
-                                        <div className="flex items-center gap-3 mt-1 text-xs">
-                                            <span className="text-slate-500">From: {q.source_assessment_title}</span>
-                                            {q.is_correct ? (
-                                                <span className="flex items-center gap-1 text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded">
-                                                    <CheckCircle size={12} /> Correct previously
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-1 text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded">
-                                                    <XCircle size={12} /> Incorrect previously
-                                                </span>
-                                            )}
-                                        </div>
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setFilter('incorrect')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'incorrect' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Incorrect Only
+                                </button>
+                                <button
+                                    onClick={() => setFilter('correct')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'correct' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Correct Only
+                                </button>
+                            </div>
+
+                            <div className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                                {(() => {
+                                    const selectedQuestions = questions.filter(q => selectedIds.includes(q.id));
+                                    const incCount = selectedQuestions.filter(q => !q.is_correct).length;
+                                    const corrCount = selectedQuestions.filter(q => q.is_correct).length;
+
+                                    if (selectedIds.length === 0) return <span>Select questions to start</span>;
+
+                                    return (
+                                        <>
+                                            <span className="text-slate-900 font-bold">{selectedIds.length}</span> selected
+                                            <span className="text-slate-300 mx-1">|</span>
+                                            <span className="text-red-600">{incCount} Incorrect</span>
+                                            <span className="text-slate-300 mx-1">•</span>
+                                            <span className="text-green-600">{corrCount} Correct</span>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                                <span className="text-sm font-medium text-slate-600">
+                                    Showing {questions.filter(q => filter === 'all' || (filter === 'incorrect' ? !q.is_correct : q.is_correct)).length} questions
+                                </span>
+                                <button
+                                    onClick={() => {
+                                        const visible = questions.filter(q => filter === 'all' || (filter === 'incorrect' ? !q.is_correct : q.is_correct));
+                                        const allVisibleSelected = visible.every(q => selectedIds.includes(q.id));
+
+                                        if (allVisibleSelected) {
+                                            // Deselect visible
+                                            const visibleIds = visible.map(q => q.id);
+                                            setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                                        } else {
+                                            // Select visible
+                                            const visibleIds = visible.map(q => q.id);
+                                            setSelectedIds(prev => [...new Set([...prev, ...visibleIds])]);
+                                        }
+                                    }}
+                                    className="text-sm text-blue-600 font-medium hover:underline"
+                                >
+                                    Toggle Visible
+                                </button>
+                            </div>
+                            <div className="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+                                {questions
+                                    .filter(q => filter === 'all' || (filter === 'incorrect' ? !q.is_correct : q.is_correct))
+                                    .map(q => (
+                                        <label
+                                            key={q.id}
+                                            className={`flex items-start gap-3 p-3 cursor-pointer transition-all border-l-4 group/item ${selectedIds.includes(q.id)
+                                                ? 'bg-blue-50/60 border-blue-500'
+                                                : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
+                                                }`}
+                                        >
+                                            <div className="pt-0.5">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(q.id)}
+                                                    onChange={() => toggleQuestion(q.id)}
+                                                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                    <p className="text-slate-900 font-medium text-sm leading-relaxed">{q.question_text}</p>
+                                                    <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${q.is_correct
+                                                        ? 'bg-green-100/70 text-green-700'
+                                                        : 'bg-red-100/70 text-red-700'
+                                                        }`}>
+                                                        {q.is_correct ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                                                        {q.is_correct ? 'Correct' : 'Incorrect'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-1.5 font-medium flex items-center gap-1 group-hover/item:text-slate-500 transition-colors">
+                                                    <BookOpen size={12} />
+                                                    {q.source_assessment_title}
+                                                </p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                {questions.filter(q => filter === 'all' || (filter === 'incorrect' ? !q.is_correct : q.is_correct)).length === 0 && (
+                                    <div className="p-8 text-center text-slate-500">
+                                        No questions match this filter.
                                     </div>
-                                </label>
-                            ))}
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
