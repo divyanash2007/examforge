@@ -79,6 +79,28 @@ export default function StudentDashboard() {
                     )}
                 </div>
 
+                {/* Practice Section */}
+                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-8 rounded-xl shadow-lg text-white overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+                        <div>
+                            <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                <Activity className="w-6 h-6" />
+                                Self Assessment Practice
+                            </h2>
+                            <p className="text-indigo-100 max-w-xl text-sm sm:text-base leading-relaxed">
+                                Master your skills by reviewing past mistakes. Create a custom practice session from questions you've previously attempted, completely independent of your class grades.
+                            </p>
+                        </div>
+                        <Link
+                            to="/student/practice/setup"
+                            className="whitespace-nowrap px-8 py-3.5 bg-white text-indigo-600 font-bold rounded-lg hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
+                        >
+                            Start Practice <ArrowRight size={18} />
+                        </Link>
+                    </div>
+                </div>
+
                 {/* Classrooms Grid */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">

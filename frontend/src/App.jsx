@@ -18,6 +18,9 @@ const ReportPage = lazy(() => import('./pages/ReportPage'));
 const TeacherRoomPage = lazy(() => import('./pages/TeacherRoomPage'));
 const TeacherAssessmentPage = lazy(() => import('./pages/TeacherAssessmentPage'));
 const StudentRoomPage = lazy(() => import('./pages/StudentRoomPage'));
+const StudentReviewPage = lazy(() => import('./pages/StudentReviewPage'));
+const StudentPracticeSetupPage = React.lazy(() => import('./pages/StudentPracticeSetupPage'));
+const StudentPracticeHistoryPage = React.lazy(() => import('./pages/StudentPracticeHistoryPage'));
 const TeacherAnalyticsPage = lazy(() => import('./pages/TeacherAnalyticsPage'));
 const TeacherMonitorPage = lazy(() => import('./pages/TeacherMonitorPage'));
 
@@ -93,6 +96,26 @@ export default function App() {
               <Route path="/student/assessments/:assessmentId/attempt" element={
                 <ProtectedRoute role="student">
                   <StudentAttemptPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/student/attempts/:attemptId/review" element={
+                <ProtectedRoute role="student">
+                  <StudentReviewPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/student/assessments/:assessmentId/review" element={
+                <ProtectedRoute role="student">
+                  <StudentReviewPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/student/practice/setup" element={
+                <ProtectedRoute role="student">
+                  <StudentPracticeSetupPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/student/practice/history" element={
+                <ProtectedRoute role="student">
+                  <StudentPracticeHistoryPage />
                 </ProtectedRoute>
               } />
 

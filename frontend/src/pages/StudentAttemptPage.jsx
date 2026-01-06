@@ -268,14 +268,16 @@ export default function StudentAttemptPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg shadow-sm border
-                             ${remainingTime < 60
-                                ? 'bg-red-50 text-red-600 border-red-100 animate-pulse'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'}`}
-                        >
-                            <Clock size={20} className={remainingTime < 60 ? 'text-red-500' : 'text-slate-400'} />
-                            <span>{formatTime(remainingTime)}</span>
-                        </div>
+                        {remainingTime !== null && (
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg shadow-sm border
+                                 ${remainingTime < 60
+                                    ? 'bg-red-50 text-red-600 border-red-100 animate-pulse'
+                                    : 'bg-slate-100 text-slate-700 border-slate-200'}`}
+                            >
+                                <Clock size={20} className={remainingTime < 60 ? 'text-red-500' : 'text-slate-400'} />
+                                <span>{formatTime(remainingTime)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>

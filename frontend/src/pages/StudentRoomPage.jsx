@@ -117,10 +117,18 @@ export default function StudentRoomPage() {
                                         </div>
 
                                         {assessment.is_submitted ? (
-                                            <div className="flex flex-col items-end gap-1">
+                                            <div className="flex flex-col items-end gap-2">
                                                 <span className="bg-green-50 text-green-700 border border-green-100 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 cursor-not-allowed text-sm">
                                                     <CheckCircle size={16} /> Completed
                                                 </span>
+                                                {assessment.attempt_id && (
+                                                    <Link
+                                                        to={`/student/attempts/${assessment.attempt_id}/review`}
+                                                        className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 hover:underline"
+                                                    >
+                                                        Review Results <ArrowLeft className="rotate-180 w-4 h-4" />
+                                                    </Link>
+                                                )}
                                             </div>
                                         ) : (
                                             <button

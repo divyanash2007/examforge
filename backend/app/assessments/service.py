@@ -175,7 +175,8 @@ def get_room_assessments_service(session: Session, room_id: int, user_id: int) -
         
         results.append(AssessmentWithAttempt(
             **assessment.dict(),
-            is_submitted=is_submitted
+            is_submitted=is_submitted,
+            attempt_id=attempt.id if attempt else None
         ))
         
     return results
@@ -303,3 +304,143 @@ def submit_attempt_service(session: Session, attempt_id: int, user_id: int):
     session.commit()
     session.refresh(attempt)
     return attempt
+
+def get_student_history_questions_service(session: Session, user_id: int):
+    # Step 1: Get valid attempt IDs
+    # select(Attempt.id) where student_id == user_id
+    try:
+        attempts = session.exec(
+            select(Attempt).where(
+                Attempt.student_id == user_id,
+                Attempt.submitted_at != None
+            ).order_by(Attempt.submitted_at.desc())
+        ).all()
+        
+        if not attempts:
+            return []
+    except Exception as e:
+        with open("backend/debug_error.log", "w") as f:
+            f.write(f"STEP 1 ERROR: {str(e)}\n{type(e)}")
+        print(f"DEBUG SQL ERROR STEP 1: {e}")
+        return []
+        
+    attempt_map = {a.id: a for a in attempts}
+    attempt_ids = list(attempt_map.keys())
+    
+    # Step 2: Get answers for these attempts
+    # We use AttemptAnswer.attempt_id.in_(attempt_ids)
+    try:
+        answers = session.exec(
+            select(AttemptAnswer).where(AttemptAnswer.attempt_id.in_(attempt_ids))
+        ).all()
+    except Exception as e:
+        with open("backend/debug_error.log", "w") as f:
+            f.write(f"STEP 2 ERROR: {str(e)}\n{type(e)}")
+        print(f"DEBUG SQL ERROR STEP 2: {e}")
+        return []
+    
+    # Deduplicate by question_id, keeping the latest one
+    # Note: answers might not be ordered by time, so we need to rely on attempt time
+    # Sorting answers by attempt time (latest first)
+    answers_sorted = sorted(
+        answers, 
+        key=lambda ans: attempt_map[ans.attempt_id].submitted_at or datetime.min, 
+        reverse=True
+    )
+    
+    # Deduplicate by question_id, keeping the latest one
+    seen_questions = set()
+    history = []
+    
+    from app.assessments.schemas import PracticeQuestionRead
+    
+    for answer in answers_sorted:
+        if answer.question_id not in seen_questions:
+            # Manual fetch to avoid join complexity 500s
+            question = session.get(Question, answer.question_id)
+            attempt = session.get(Attempt, answer.attempt_id)
+            
+            if question and attempt:
+                assessment = session.get(Assessment, attempt.assessment_id)
+                if assessment:
+                    seen_questions.add(question.id)
+                    history.append(PracticeQuestionRead(
+                        id=question.id,
+                        question_text=question.question_text,
+                        source_assessment_title=assessment.title,
+                        is_correct=answer.is_correct
+                    ))
+            
+    return history
+
+def create_practice_assessment_service(session: Session, practice_in, user_id: int) -> Assessment:
+    # GUARD: Prevent empty assessments
+    if not practice_in.question_ids:
+        raise HTTPException(status_code=400, detail="Cannot create practice assessment with 0 questions.")
+
+    # Calculate logical time_per_question to achieve requested total time
+    # This is a heuristic because the engine uses (time_per_question * num_questions) for total duration
+    time_per_q = 0
+    if practice_in.time_limit and practice_in.time_limit > 0:
+        total_seconds = practice_in.time_limit * 60
+        num_questions = len(practice_in.question_ids)
+        if num_questions > 0:
+            time_per_q = total_seconds // num_questions
+
+    # Create isolated assessment
+    # INVARIANT: SELF assessments MUST always have room_id = None
+    assessment = Assessment(
+        title=practice_in.title,
+        type=AssessmentType.SELF,
+        status=AssessmentStatus.LIVE, # Ready to start immediately
+        created_by=user_id,
+        room_id=None, # Isolation
+        time_per_question=time_per_q
+    )
+    session.add(assessment)
+    session.commit()
+    session.refresh(assessment)
+    
+    # Link questions
+    for idx, q_id in enumerate(practice_in.question_ids):
+        # Optional: Check if question exists? Constraint will fail if not.
+        link = AssessmentQuestion(
+            assessment_id=assessment.id,
+            question_id=q_id,
+            question_order=idx + 1
+        )
+        session.add(link)
+    
+    session.commit()
+    return assessment
+
+def get_student_practice_history_service(session: Session, user_id: int) -> List[AssessmentWithAttempt]:
+    # Fetch only SELF assessments created by this student
+    # STRICT ISOLATION: No room based logic here
+    statement = select(Assessment).where(
+        Assessment.type == AssessmentType.SELF,
+        Assessment.created_by == user_id
+    ).order_by(Assessment.created_at.desc())
+    
+    assessments = session.exec(statement).all()
+    results = []
+    
+    for assessment in assessments:
+         # Find if there is an attempt (there should be usually 1 or 0 for practice logic, 
+         # but let's just find the latest one)
+         attempt = session.exec(
+             select(Attempt).where(
+                 Attempt.assessment_id == assessment.id,
+                 Attempt.student_id == user_id
+             ).order_by(Attempt.started_at.desc())
+         ).first()
+         
+         is_submitted = (attempt is not None and attempt.submitted_at is not None)
+         
+         results.append(AssessmentWithAttempt(
+             **assessment.dict(),
+             is_submitted=is_submitted,
+             attempt_id=attempt.id if attempt else None
+         ))
+         
+    return results

@@ -5,7 +5,7 @@ from sqlmodel import Session
 from app.database import get_engine
 from app.models.user import User
 from app.auth.dependencies import get_current_user, teacher_only, student_only
-from app.assessments.schemas import AssessmentCreate, AssessmentRead, QuestionAdd, AttemptStart, AttemptRead, AnswerSubmit, AttemptDetail, QuestionCreate, AssessmentDetail, AssessmentWithAttempt
+from app.assessments.schemas import AssessmentCreate, AssessmentRead, QuestionAdd, AttemptStart, AttemptRead, AnswerSubmit, AttemptDetail, QuestionCreate, AssessmentDetail, AssessmentWithAttempt, PracticeQuestionRead, PracticeCreate
 from app.assessments.service import (
     create_assessment_service,
     add_question_service,
@@ -15,7 +15,10 @@ from app.assessments.service import (
     submit_answer_service,
     submit_attempt_service,
     get_assessment_detail_service,
-    create_question_service
+    create_question_service,
+    get_student_history_questions_service,
+    create_practice_assessment_service,
+    get_student_practice_history_service
 )
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -23,6 +26,15 @@ router = APIRouter(prefix="/assessments", tags=["assessments"])
 def get_session():
     with Session(get_engine()) as session:
         yield session
+
+# Practice Endpoints (Placed first to avoid shadowing by {assessment_id} routes)
+
+@router.post("/practice/questions", response_model=List[PracticeQuestionRead])
+def get_practice_questions(
+    current_user: User = Depends(student_only),
+    session: Session = Depends(get_session)
+):
+    return get_student_history_questions_service(session, current_user.id)
 
 # Teacher Endpoints
 
@@ -71,6 +83,28 @@ def start_assessment(
     session: Session = Depends(get_session)
 ):
     return start_assessment_service(session, assessment_id, current_user.id)
+
+# Practice Endpoints
+
+
+@router.get("/practice/history", response_model=List[AssessmentWithAttempt])
+def get_practice_history(
+    current_user: User = Depends(student_only),
+    session: Session = Depends(get_session)
+):
+    """
+    Get history of self-assessments (practice sessions) for the student.
+    Strictly isolated from classroom assessments.
+    """
+    return get_student_practice_history_service(session, current_user.id)
+
+@router.post("/practice", response_model=AssessmentRead)
+def create_practice_assessment(
+    practice_in: PracticeCreate,
+    current_user: User = Depends(student_only),
+    session: Session = Depends(get_session)
+):
+    return create_practice_assessment_service(session, practice_in, current_user.id)
 
 # Student Endpoints
 

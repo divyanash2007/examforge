@@ -24,7 +24,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     try:
         # print(f"DEBUG AUTH: verifying token {token[:10]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id: int = int(payload.get("sub"))
         role: str = payload.get("role")
         if user_id is None or role is None:
             print("DEBUG AUTH: user_id or role missing in payload")
@@ -38,6 +38,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     if user is None:
         print(f"DEBUG AUTH: User {token_data.user_id} not found in DB")
         raise credentials_exception
+    
+    # print(f"DEBUG AUTH: Resolved User {user.id}, Role {user.role}")
     return user
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

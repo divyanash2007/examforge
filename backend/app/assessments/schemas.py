@@ -13,7 +13,7 @@ class AssessmentCreate(SQLModel):
 
 class AssessmentRead(SQLModel):
     id: int
-    room_id: int
+    room_id: Optional[int] = None
     title: str
     type: AssessmentType
     status: AssessmentStatus
@@ -24,6 +24,7 @@ class AssessmentRead(SQLModel):
 
 class AssessmentWithAttempt(AssessmentRead):
     is_submitted: bool = False
+    attempt_id: Optional[int] = None
 
 class QuestionAdd(SQLModel):
     question_id: int
@@ -73,3 +74,14 @@ class QuestionRead(SQLModel):
 
 class AssessmentDetail(AssessmentRead):
     questions: List[QuestionRead] = []
+
+class PracticeQuestionRead(SQLModel):
+    id: int
+    question_text: str
+    source_assessment_title: str
+    is_correct: bool
+
+class PracticeCreate(SQLModel):
+    question_ids: List[int]
+    title: str = "Self Assessment Practice"
+    time_limit: Optional[int] = None # in minutes
