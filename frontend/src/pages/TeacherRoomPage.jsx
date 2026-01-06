@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import { Plus, ArrowLeft, FileText } from 'lucide-react';
+import { Plus, ArrowLeft, FileText, Clock, MoreVertical, X } from 'lucide-react';
+import Layout from '../components/Layout';
 
 export default function TeacherRoomPage() {
     const { roomId } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
     const [room, setRoom] = useState(null);
     const [assessments, setAssessments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,9 +40,7 @@ export default function TeacherRoomPage() {
             setRoom(foundRoom);
 
             // Fetch assessments
-            console.log(`Fetching assessments for room: ${roomId}`);
             const assessmentsRes = await api.get(`/assessments/room/${roomId}`);
-            console.log("Assessments loaded:", assessmentsRes.data);
             setAssessments(assessmentsRes.data);
         } catch (err) {
             console.error("Failed to fetch data", err);
@@ -53,14 +50,8 @@ export default function TeacherRoomPage() {
         }
     };
 
-    const handleOpenCreate = () => {
-        console.log("Create Assessment clicked");
-        setIsCreateAssessmentOpen(true);
-    };
-
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
-        console.log("Submitting Create Assessment form:", formData);
         setCreating(true);
         try {
             const payload = {
@@ -70,8 +61,7 @@ export default function TeacherRoomPage() {
                 time_per_question: parseInt(formData.time_per_question)
             };
 
-            const res = await api.post('/assessments', payload);
-            console.log("API Success:", res.data);
+            await api.post('/assessments', payload);
 
             // Refresh list
             const assessmentsRes = await api.get(`/assessments/room/${roomId}`);
@@ -88,72 +78,96 @@ export default function TeacherRoomPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center">Loading Room Details...</div>;
-    if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
-    if (!room) return <div className="p-8 text-center">Room not found.</div>;
+    if (loading) return (
+        <Layout>
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        </Layout>
+    );
+
+    if (error) return (
+        <Layout>
+            <div className="p-8 text-center text-red-600 bg-red-50 rounded-xl border border-red-200">
+                {error}
+            </div>
+        </Layout>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8 relative">
-            <div className="max-w-5xl mx-auto">
+        <Layout>
+            <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <Link to="/teacher" className="text-gray-500 hover:text-gray-800">
-                        <ArrowLeft size={24} />
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{room.name}</h1>
-                        <p className="text-gray-500">
-                            Code: <span className="font-mono bg-white px-2 py-1 rounded border shadow-sm select-all">{room.code}</span>
-                        </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                        <Link to="/teacher" className="mt-1.5 text-slate-400 hover:text-slate-700 transition-colors">
+                            <ArrowLeft size={24} />
+                        </Link>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900 leading-tight">{room.name}</h1>
+                            <div className="flex items-center gap-2 mt-1 text-slate-500 text-sm">
+                                <span>Code:</span>
+                                <span className="font-mono font-medium bg-slate-100 px-2 py-0.5 rounded text-slate-700 select-all border border-slate-200">
+                                    {room.code}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="ml-auto">
-                        <button
-                            onClick={handleOpenCreate}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition"
-                        >
-                            <Plus size={20} /> Create Assessment
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setIsCreateAssessmentOpen(true)}
+                        className="bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-sm transition-all text-sm font-semibold"
+                    >
+                        <Plus size={18} /> New Assessment
+                    </button>
                 </div>
 
                 {/* Assessments List */}
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                    <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-gray-800">
-                        <FileText className="text-blue-500" /> Assessments
+                <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        Assessments ({assessments.length})
                     </h2>
 
                     {assessments.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 bg-gray-50 rounded-lg border-2 border-dashed">
-                            <p className="mb-2">No assessments created yet.</p>
-                            <p className="text-sm">Click "Create Assessment" to add a new test.</p>
+                        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
+                            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                                <Plus className="w-6 h-6 text-slate-300" />
+                            </div>
+                            <p className="font-medium text-slate-600">No assessments created</p>
+                            <p className="text-sm mt-1">Get started by creating your first test.</p>
                         </div>
                     ) : (
-                        <div className="grid gap-4">
+                        <div className="grid gap-3">
                             {assessments.map(assessment => (
                                 <div
                                     key={assessment.id}
-                                    onClick={() => {
-                                        console.log("Navigating to assessment:", assessment.id);
-                                        navigate(`/teacher/assessments/${assessment.id}`);
-                                    }}
-                                    className="border rounded-lg p-5 flex justify-between items-center hover:bg-gray-50 transition bg-white shadow-sm cursor-pointer"
+                                    onClick={() => navigate(`/teacher/assessments/${assessment.id}`)}
+                                    className="group bg-white p-5 rounded-xl shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
                                 >
-                                    <div>
-                                        <h3 className="font-semibold text-lg text-gray-900">{assessment.title}</h3>
-                                        <div className="flex gap-2 mt-2">
-                                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${assessment.status === 'LIVE' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                assessment.status === 'DRAFT' ? 'bg-gray-100 text-gray-700 border border-gray-200' :
-                                                    'bg-red-100 text-red-700 border border-red-200'
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors truncate">
+                                                {assessment.title}
+                                            </h3>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border ${assessment.status === 'LIVE' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                    assessment.status === 'DRAFT' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                        'bg-red-50 text-red-700 border-red-200'
                                                 }`}>
                                                 {assessment.status}
                                             </span>
-                                            <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                        </div>
+                                        <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                                            <span className="flex items-center gap-1.5">
+                                                <Clock size={14} />
+                                                {new Date(assessment.created_at).toLocaleDateString()}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono text-slate-600">
                                                 {assessment.type}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-gray-500">
-                                        {new Date(assessment.created_at).toLocaleDateString()}
+                                    <div className="text-slate-300 group-hover:text-blue-500 transition-colors">
+                                        <ArrowLeft className="rotate-180" size={20} />
                                     </div>
                                 </div>
                             ))}
@@ -162,77 +176,103 @@ export default function TeacherRoomPage() {
                 </div>
             </div>
 
-            {/* Create Assessment Modal */}
+            {/* Create Assessment Modal Overlay */}
             {isCreateAssessmentOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4 text-gray-800">Create New Assessment</h2>
-                        <form onSubmit={handleCreateSubmit} className="space-y-4">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h2 className="text-lg font-bold text-slate-900">Create Assessment</h2>
+                            <button
+                                onClick={() => setIsCreateAssessmentOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateSubmit} className="p-6 space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Title</label>
                                 <input
                                     type="text"
                                     value={formData.title}
                                     onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                                     required
-                                    placeholder="e.g. Midterm Exam"
+                                    placeholder="e.g. Midterm Examination"
+                                    autoFocus
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                <select
-                                    value={formData.type}
-                                    onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                >
-                                    <option value="LIVE">Live Test</option>
-                                    <option value="HOMEWORK">Homework</option>
-                                </select>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Type</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['LIVE', 'HOMEWORK'].map((type) => (
+                                        <label key={type} className={`
+                                            flex items-center justify-center py-2.5 border rounded-lg cursor-pointer transition-all text-sm font-medium
+                                            ${formData.type === type
+                                                ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            }
+                                        `}>
+                                            <input
+                                                type="radio"
+                                                name="type"
+                                                value={type}
+                                                checked={formData.type === type}
+                                                onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                                className="sr-only"
+                                            />
+                                            {type === 'LIVE' ? 'Live Test' : 'Homework'}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration (mins)</label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Total Mins</label>
                                     <input
                                         type="number"
                                         value={formData.duration_minutes}
                                         onChange={e => setFormData({ ...formData, duration_minutes: e.target.value })}
-                                        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                         min="1"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Secs/Question</label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Secs/Quest</label>
                                     <input
                                         type="number"
                                         value={formData.time_per_question}
                                         onChange={e => setFormData({ ...formData, time_per_question: e.target.value })}
-                                        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                         min="5"
                                         required
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
+
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateAssessmentOpen(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                                    className="flex-1 px-4 py-2.5 text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-medium transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creating}
-                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-70 disabled:cursor-wait shadow-sm shadow-blue-200 transition-all"
                                 >
-                                    {creating ? 'Creating...' : 'Create'}
+                                    {creating ? 'Creating...' : 'Create Assessment'}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-        </div>
+        </Layout>
     );
 }

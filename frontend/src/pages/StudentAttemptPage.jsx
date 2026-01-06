@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { ChevronRight, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
 
 export default function StudentAttemptPage() {
     const { assessmentId } = useParams();
@@ -213,7 +213,7 @@ export default function StudentAttemptPage() {
             if (isAuto) {
                 alert("Time's up! Assessment submitted.");
             } else {
-                alert("Assessment Submitted!");
+                // alert("Assessment Submitted!");
             }
             navigate('/student');
         } catch (err) {
@@ -228,73 +228,141 @@ export default function StudentAttemptPage() {
         }
     };
 
-    if (loading) return <div className="p-10 text-center">Loading Assessment...</div>;
-    if (error) return <div className="p-10 text-center text-red-600 font-semibold">{error}</div>;
-    if (!assessment || questions.length === 0) return <div className="p-10 text-center">No questions in this assessment.</div>;
+    if (loading) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+    );
+
+    if (error) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-xl text-lg font-medium flex items-center gap-3">
+                <AlertCircle size={24} />
+                {error}
+            </div>
+        </div>
+    );
+
+    if (!assessment || questions.length === 0) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <div className="text-slate-500">No questions in this assessment.</div>
+        </div>
+    );
 
     const currentQuestion = questions[currentQuestionIndex];
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
     const isTimeUp = remainingTime === 0;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
-            <div className="max-w-3xl w-full bg-white rounded-lg shadow-md overflow-hidden">
-                {/* Header */}
-                <div className="bg-blue-600 text-white p-6 flex justify-between items-center">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+            {/* Sticky Header */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-bold">{assessment.title}</h1>
-                        <p className="text-blue-100 text-sm">Question {currentQuestionIndex + 1} of {questions.length}</p>
+                        <h1 className="text-lg font-bold text-slate-900 line-clamp-1">{assessment.title}</h1>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                Question {currentQuestionIndex + 1} of {questions.length}
+                            </span>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-mono ${remainingTime < 60 ? 'bg-red-500' : 'bg-blue-700'}`}>
-                            <Clock size={16} />
+
+                    <div className="flex items-center gap-4">
+                        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg shadow-sm border
+                             ${remainingTime < 60
+                                ? 'bg-red-50 text-red-600 border-red-100 animate-pulse'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'}`}
+                        >
+                            <Clock size={20} className={remainingTime < 60 ? 'text-red-500' : 'text-slate-400'} />
                             <span>{formatTime(remainingTime)}</span>
                         </div>
                     </div>
                 </div>
+            </header>
 
-                {/* Question Area */}
-                <div className="p-8">
-                    <h2 className="text-lg font-medium text-gray-800 mb-6">{currentQuestion.question_text}</h2>
+            {/* Main Content */}
+            <main className="flex-1 max-w-4xl mx-auto w-full p-6 sm:p-8 flex flex-col">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+                    {/* Progress Bar (at top of card) */}
+                    <div className="w-full bg-slate-100 h-1">
+                        <div
+                            className="bg-blue-600 h-1 transition-all duration-300 ease-out"
+                            style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                        ></div>
+                    </div>
 
-                    <div className="space-y-4">
-                        {currentQuestion.options.map((option, idx) => (
-                            <label
-                                key={idx}
-                                className={`flex items-center p-4 border rounded-lg cursor-pointer transition 
-                                    ${selectedOption === option
-                                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                        : 'border-gray-200 hover:bg-gray-50'}
-                                    ${isTimeUp ? 'opacity-50 cursor-not-allowed' : ''}
-                                        `}
-                            >
-                                <input
-                                    type="radio"
-                                    name={`question-${currentQuestion.id}`}
-                                    value={option}
-                                    checked={selectedOption === option}
-                                    onChange={() => handleOptionSelect(option)}
-                                    disabled={isTimeUp}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                />
-                                <span className="ml-3 text-gray-700">{option}</span>
-                            </label>
-                        ))}
+                    <div className="flex-1 p-8 sm:p-10 flex flex-col justify-center">
+                        <h2 className="text-xl sm:text-2xl font-serif sm:font-sans font-medium text-slate-900 leading-relaxed mb-8">
+                            {currentQuestion.question_text}
+                        </h2>
+
+                        <div className="space-y-4 max-w-2xl">
+                            {currentQuestion.options.map((option, idx) => {
+                                const isSelected = selectedOption === option;
+                                return (
+                                    <label
+                                        key={idx}
+                                        className={`
+                                        relative flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 group
+                                        ${isSelected
+                                                ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                            }
+                                        ${isTimeUp ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+                                    `}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name={`question-${currentQuestion.id}`}
+                                            value={option}
+                                            checked={isSelected}
+                                            onChange={() => handleOptionSelect(option)}
+                                            disabled={isTimeUp}
+                                            className="sr-only"
+                                        />
+                                        <div className={`
+                                        w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 flex-shrink-0 transition-colors
+                                        ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 group-hover:border-slate-400'}
+                                    `}>
+                                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                                        </div>
+                                        <span className={`text-base font-medium ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
+                                            {option}
+                                        </span>
+                                    </label>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Footer Controls */}
+                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm text-slate-500">
+                        <div>
+                            {/* Placeholder for "Prev" if we allowed it, but usually linear exams don't allow backtracking in some modes. 
+                                 Keeping it simple as per strict "Next only" implication of logic. 
+                             */}
+                        </div>
+
+                        <button
+                            onClick={handleNext}
+                            disabled={!selectedOption || submitting || isTimeUp}
+                            className={`
+                                flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm shadow-sm transition-all transform active:scale-[0.98]
+                                ${(!selectedOption || submitting || isTimeUp)
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-transparent'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                                }
+                            `}
+                        >
+                            {submitting
+                                ? 'Saving...'
+                                : (isLastQuestion ? 'Submit Final Answer' : 'Next Question')
+                            }
+                            {!submitting && (isLastQuestion ? <CheckCircle size={18} /> : <ChevronRight size={18} />)}
+                        </button>
                     </div>
                 </div>
-
-                {/* Footer Controls */}
-                <div className="p-6 bg-gray-50 border-t flex justify-end">
-                    <button
-                        onClick={handleNext}
-                        disabled={!selectedOption || submitting || isTimeUp}
-                        className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        {submitting ? 'Saving...' : (isLastQuestion ? 'Submit Assessment' : 'Next Question')}
-                        {!submitting && (isLastQuestion ? <CheckCircle size={18} /> : <ChevronRight size={18} />)}
-                    </button>
-                </div>
-            </div>
+            </main>
         </div>
     );
 }
