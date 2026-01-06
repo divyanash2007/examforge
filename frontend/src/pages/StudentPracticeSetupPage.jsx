@@ -90,57 +90,62 @@ export default function StudentPracticeSetupPage() {
 
     return (
         <Layout>
-            <div className="max-w-4xl mx-auto space-y-6">
-                <div className="flex items-center justify-between">
+            <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Self Assessment Practice</h1>
-                        <p className="text-slate-500">Select questions from your history to practice.</p>
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">Self Assessment Practice</h1>
+                        <p className="text-sm sm:text-base text-slate-500 mt-1">Select questions to practice.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+
+                    {/* Actions - Stacks on Mobile */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                         <button
                             onClick={() => navigate('/student/practice/history')}
-                            className="text-slate-600 hover:text-blue-600 font-medium px-4"
+                            className="text-slate-600 hover:text-blue-600 font-medium px-4 py-2 sm:py-0 text-center sm:text-left border border-slate-200 sm:border-none rounded-lg sm:rounded-none bg-white sm:bg-transparent"
                         >
                             View History
                         </button>
 
-                        <div className="relative group">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 group-hover:text-blue-500 transition-colors">
-                                <Clock size={16} />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                            <div className="relative group w-full sm:w-48">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 group-hover:text-blue-500 transition-colors">
+                                    <Clock size={16} />
+                                </div>
+                                <select
+                                    value={timeLimit || ''}
+                                    onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
+                                    className="appearance-none w-full bg-white border border-slate-200 text-slate-700 text-sm py-2.5 pl-10 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium shadow-sm transition-all cursor-pointer hover:border-blue-300 truncate leading-normal"
+                                >
+                                    <option value="">Unlimited Time</option>
+                                    <option value="15">15 Minutes</option>
+                                    <option value="30">30 Minutes</option>
+                                    <option value="45">45 Minutes</option>
+                                    <option value="60">1 Hour</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 group-hover:text-slate-600 transition-colors">
+                                    <ChevronDown size={16} />
+                                </div>
                             </div>
-                            <select
-                                value={timeLimit || ''}
-                                onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
-                                className="appearance-none w-full bg-white border border-slate-200 text-slate-700 text-sm py-2.5 pl-10 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium shadow-sm transition-all cursor-pointer hover:border-blue-300"
-                            >
-                                <option value="">Unlimited Time</option>
-                                <option value="15">15 Minutes</option>
-                                <option value="30">30 Minutes</option>
-                                <option value="45">45 Minutes</option>
-                                <option value="60">1 Hour</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 group-hover:text-slate-600 transition-colors">
-                                <ChevronDown size={16} />
-                            </div>
-                        </div>
 
-                        <button
-                            onClick={handleStartPractice}
-                            disabled={selectedIds.length === 0 || creating}
-                            className={`px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-sm ${selectedIds.length === 0 || creating
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow shadow-blue-200'
-                                }`}
-                        >
-                            {creating ? 'Creating...' : 'Start Practice'}
-                            {!creating && <PlayCircle size={18} />}
-                        </button>
+                            <button
+                                onClick={handleStartPractice}
+                                disabled={selectedIds.length === 0 || creating}
+                                className={`px-6 py-2.5 rounded-lg font-semibold flex items-center justify-center sm:justify-start gap-2 transition-all shadow-sm w-full sm:w-auto ${selectedIds.length === 0 || creating
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow shadow-blue-200'
+                                    }`}
+                            >
+                                {creating ? 'Creating...' : 'Start Practice'}
+                                {!creating && <PlayCircle size={18} />}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {error && (
-                    <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-2">
-                        <AlertCircle size={20} />
+                    <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-2 text-sm">
+                        <AlertCircle size={20} className="flex-shrink-0" />
                         {error}
                     </div>
                 )}
@@ -158,52 +163,54 @@ export default function StudentPracticeSetupPage() {
                 ) : (
                     <div className="space-y-4">
                         {/* Filters and Selection Summary */}
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            {/* Scrollable Filters on Mobile */}
+                            <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto no-scrollbar">
                                 <button
                                     onClick={() => setFilter('all')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     All
                                 </button>
                                 <button
                                     onClick={() => setFilter('incorrect')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'incorrect' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'incorrect' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Incorrect Only
                                 </button>
                                 <button
                                     onClick={() => setFilter('correct')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'correct' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex-1 sm:flex-none ${filter === 'correct' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Correct Only
                                 </button>
                             </div>
 
-                            <div className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                            <div className="text-sm font-medium text-slate-600 flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-none pt-3 sm:pt-0 mt-1 sm:mt-0 border-slate-100">
                                 {(() => {
                                     const selectedQuestions = questions.filter(q => selectedIds.includes(q.id));
                                     const incCount = selectedQuestions.filter(q => !q.is_correct).length;
                                     const corrCount = selectedQuestions.filter(q => q.is_correct).length;
 
-                                    if (selectedIds.length === 0) return <span>Select questions to start</span>;
+                                    if (selectedIds.length === 0) return <span className="text-slate-400">Select questions to start</span>;
 
                                     return (
-                                        <>
-                                            <span className="text-slate-900 font-bold">{selectedIds.length}</span> selected
-                                            <span className="text-slate-300 mx-1">|</span>
-                                            <span className="text-red-600">{incCount} Incorrect</span>
-                                            <span className="text-slate-300 mx-1">•</span>
-                                            <span className="text-green-600">{corrCount} Correct</span>
-                                        </>
+                                        <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
+                                            <span className="text-slate-900 font-bold">{selectedIds.length} <span className="font-normal text-slate-500">selected</span></span>
+                                            <span className="text-slate-300 hidden sm:inline">|</span>
+                                            <div className="flex gap-2 text-xs">
+                                                <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{incCount} Inc</span>
+                                                <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{corrCount} Corr</span>
+                                            </div>
+                                        </div>
                                     );
                                 })()}
                             </div>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                                <span className="text-sm font-medium text-slate-600">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between sticky top-0 z-10">
+                                <span className="text-xs sm:text-sm font-medium text-slate-600">
                                     Showing {questions.filter(q => filter === 'all' || (filter === 'incorrect' ? !q.is_correct : q.is_correct)).length} questions
                                 </span>
                                 <button
@@ -212,16 +219,14 @@ export default function StudentPracticeSetupPage() {
                                         const allVisibleSelected = visible.every(q => selectedIds.includes(q.id));
 
                                         if (allVisibleSelected) {
-                                            // Deselect visible
                                             const visibleIds = visible.map(q => q.id);
                                             setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
                                         } else {
-                                            // Select visible
                                             const visibleIds = visible.map(q => q.id);
                                             setSelectedIds(prev => [...new Set([...prev, ...visibleIds])]);
                                         }
                                     }}
-                                    className="text-sm text-blue-600 font-medium hover:underline"
+                                    className="text-xs sm:text-sm text-blue-600 font-medium hover:underline px-2 py-1"
                                 >
                                     Toggle Visible
                                 </button>
@@ -232,34 +237,36 @@ export default function StudentPracticeSetupPage() {
                                     .map(q => (
                                         <label
                                             key={q.id}
-                                            className={`flex items-start gap-3 p-3 cursor-pointer transition-all border-l-4 group/item ${selectedIds.includes(q.id)
+                                            className={`flex items-start gap-3 p-3 sm:p-4 md:p-5 cursor-pointer transition-all border-l-4 group/item ${selectedIds.includes(q.id)
                                                 ? 'bg-blue-50/60 border-blue-500'
                                                 : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
                                                 }`}
                                         >
-                                            <div className="pt-0.5">
+                                            <div className="pt-1">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedIds.includes(q.id)}
                                                     onChange={() => toggleQuestion(q.id)}
-                                                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                                                    className="w-5 h-5 md:w-6 md:h-6 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                                                 />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                    <p className="text-slate-900 font-medium text-sm leading-relaxed">{q.question_text}</p>
-                                                    <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${q.is_correct
-                                                        ? 'bg-green-100/70 text-green-700'
-                                                        : 'bg-red-100/70 text-red-700'
-                                                        }`}>
-                                                        {q.is_correct ? <CheckCircle size={10} /> : <XCircle size={10} />}
-                                                        {q.is_correct ? 'Correct' : 'Incorrect'}
-                                                    </span>
+                                                <div className="flex flex-col gap-1.5 md:gap-3">
+                                                    <p className="text-slate-900 font-medium text-sm md:text-base leading-relaxed">{q.question_text}</p>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                        <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] md:text-xs font-bold uppercase tracking-wider ${q.is_correct
+                                                            ? 'bg-green-100/70 text-green-700'
+                                                            : 'bg-red-100/70 text-red-700'
+                                                            }`}>
+                                                            {q.is_correct ? <CheckCircle size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
+                                                            {q.is_correct ? 'Correct' : 'Incorrect'}
+                                                        </span>
+                                                        <p className="text-xs md:text-sm text-slate-400 font-medium flex items-center gap-1">
+                                                            <BookOpen size={10} className="md:w-3 md:h-3" />
+                                                            <span className="truncate max-w-[150px] sm:max-w-xs">{q.source_assessment_title}</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-xs text-slate-400 mt-1.5 font-medium flex items-center gap-1 group-hover/item:text-slate-500 transition-colors">
-                                                    <BookOpen size={12} />
-                                                    {q.source_assessment_title}
-                                                </p>
                                             </div>
                                         </label>
                                     ))}

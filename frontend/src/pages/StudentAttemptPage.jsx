@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { ChevronRight, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
+import QuestionNavigator from '../components/exam/QuestionNavigator';
 
 export default function StudentAttemptPage() {
     const { assessmentId } = useParams();
@@ -125,21 +126,128 @@ export default function StudentAttemptPage() {
         return () => clearInterval(timerRef.current);
     }, [remainingTime === null]); // Run once when timer starts
 
+    // Question Time Tracking Checkpoints
+    const [questionTimes, setQuestionTimes] = useState({}); // { [qId]: totalSeconds }
+    const lastQuestionStartTime = useRef(Date.now());
+    const [currentTimeTick, setCurrentTimeTick] = useState(Date.now()); // For live UI updates
+
+    // Update timer tick every second for live UI
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTimeTick(Date.now());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Track time when switching questions or unmounting
+    useEffect(() => {
+        // Record time for previous question (which was currentQuestionIndex BEFORE this effect ran? Use ref to track index?)
+        // Better: Just use the start time ref.
+        // When index changes, we add (now - start) to the *previous* index's question? 
+        // No, we need to know WHICH question was active. 
+        // We can use a ref for previousQuestionId.
+
+        // Actually, simpler:
+        // Identify current question ID from index (safely).
+        // BUT this effect runs AFTER render. So `currentQuestionIndex` is the NEW one.
+        // We need `usePrevious` or a ref to track "active question ID".
+
+    }, [currentQuestionIndex]);
+
+    // Let's rewrite the above thought with a Ref for the active question ID
+    const activeQuestionIdRef = useRef(questions.length > 0 ? questions[0].id : null);
+
+    // Visited Questions Tracking
+    const [visitedQuestions, setVisitedQuestions] = useState(new Set());
+    const [markedQuestions, setMarkedQuestions] = useState(new Set());
+
+    const toggleMarkForReview = (qId) => {
+        setMarkedQuestions(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(qId)) {
+                newSet.delete(qId);
+            } else {
+                newSet.add(qId);
+            }
+            return newSet;
+        });
+    };
+
+    useEffect(() => {
+        if (questions.length > 0) {
+            const firstId = questions[0].id;
+            if (!activeQuestionIdRef.current) {
+                activeQuestionIdRef.current = firstId;
+            }
+            // Mark initial question as visited
+            setVisitedQuestions(prev => new Set(prev).add(firstId));
+        }
+    }, [questions]);
+
+    // Update visited set when current question changes
+    useEffect(() => {
+        if (questions.length > 0 && questions[currentQuestionIndex]) {
+            const currentId = questions[currentQuestionIndex].id;
+            setVisitedQuestions(prev => {
+                const newSet = new Set(prev);
+                newSet.add(currentId);
+                return newSet;
+            });
+        }
+    }, [currentQuestionIndex, questions]);
+
+    // Handle Time Accumulation on Question Switch
+    useEffect(() => {
+        const now = Date.now();
+        const elapsedSec = (now - lastQuestionStartTime.current) / 1000;
+
+        if (activeQuestionIdRef.current) {
+            setQuestionTimes(prev => ({
+                ...prev,
+                [activeQuestionIdRef.current]: (prev[activeQuestionIdRef.current] || 0) + elapsedSec
+            }));
+        }
+
+        // Reset for new question
+        lastQuestionStartTime.current = now;
+        if (questions.length > 0) {
+            activeQuestionIdRef.current = questions[currentQuestionIndex].id;
+        }
+    }, [currentQuestionIndex, questions]);
+
+    // Calculate live time for current active question
+    const getCurrentQuestionTime = (qId) => {
+        if (qId !== activeQuestionIdRef.current) return (questionTimes[qId] || 0);
+        const currentSession = (currentTimeTick - lastQuestionStartTime.current) / 1000;
+        return (questionTimes[qId] || 0) + currentSession;
+    };
+
     // Auto Submit Logic
     const handleAutoSubmit = async () => {
         console.log("Auto-submitting...");
         const { selectedOption, currentQuestionIndex, questions, attempt } = stateRef.current;
 
+        // Capture final time chunk for the active question
+        const now = Date.now();
+        const elapsedSec = (now - lastQuestionStartTime.current) / 1000;
+        const currentQ = questions[currentQuestionIndex];
+        const finalTime = (questionTimes[currentQ.id] || 0) + elapsedSec;
+
         // 1. Force Save Current Answer if exists
         try {
-            if (selectedOption && questions.length > 0 && attempt) {
-                const currentQ = questions[currentQuestionIndex];
+            if (questions.length > 0 && attempt) {
                 console.log("Saving last answer before submit:", currentQ.id, selectedOption);
-                await api.post(`/assessments/attempts/${attempt.id}/answer`, {
-                    question_id: currentQ.id,
-                    selected_answer: selectedOption,
-                    time_taken: 0
-                });
+                // Even if no option selected, we might want to save time? 
+                // But backend expects 'selected_answer'. 
+                // Only save if selectedOption exists (as per existing logic).
+
+                if (selectedOption) {
+                    await api.post(`/assessments/attempts/${attempt.id}/answer`, {
+                        question_id: currentQ.id,
+                        selected_answer: selectedOption,
+                        time_taken: Math.round(finalTime)
+                    });
+                }
             }
         } catch (err) {
             console.error("Failed to save final answer during auto-submit", err);
@@ -172,12 +280,17 @@ export default function StudentAttemptPage() {
 
         setSubmitting(true);
         try {
-            // Submit single answer
+            // Capture final time chunk for the active question
+            const now = Date.now();
+            const elapsedSec = (now - lastQuestionStartTime.current) / 1000;
             const currentQ = questions[currentQuestionIndex];
+            const finalTime = (questionTimes[currentQ.id] || 0) + elapsedSec;
+
+            // Submit single answer
             await api.post(`/assessments/attempts/${attempt.id}/answer`, {
                 question_id: currentQ.id,
                 selected_answer: selectedOption,
-                time_taken: 0
+                time_taken: Math.round(finalTime)
             });
 
             // Update local saved state
@@ -256,10 +369,10 @@ export default function StudentAttemptPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             {/* Sticky Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-lg font-bold text-slate-900 line-clamp-1">{assessment.title}</h1>
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm relative">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                    <div className="min-w-0">
+                        <h1 className="text-lg font-bold text-slate-900 line-clamp-1 pr-4">{assessment.title}</h1>
                         <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide">
                                 Question {currentQuestionIndex + 1} of {questions.length}
@@ -267,14 +380,27 @@ export default function StudentAttemptPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                        {/* Avg Time Display */}
+                        {questions.length > 0 && (
+                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium">
+                                <Clock size={16} className="text-slate-400" />
+                                <span>
+                                    Avg: {Math.round(
+                                        Object.keys(questionTimes).reduce((acc, qId) => acc + getCurrentQuestionTime(parseInt(qId)), 0) /
+                                        Math.max(1, Object.keys(questionTimes).length + (activeQuestionIdRef.current && !questionTimes[activeQuestionIdRef.current] ? 1 : 0))
+                                    )}s
+                                </span>
+                            </div>
+                        )}
+
                         {remainingTime !== null && (
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg shadow-sm border
+                            <div className={`flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-mono font-bold text-base sm:text-lg shadow-sm border transition-colors
                                  ${remainingTime < 60
                                     ? 'bg-red-50 text-red-600 border-red-100 animate-pulse'
                                     : 'bg-slate-100 text-slate-700 border-slate-200'}`}
                             >
-                                <Clock size={20} className={remainingTime < 60 ? 'text-red-500' : 'text-slate-400'} />
+                                <Clock size={18} className={remainingTime < 60 ? 'text-red-500' : 'text-slate-400'} />
                                 <span>{formatTime(remainingTime)}</span>
                             </div>
                         )}
@@ -282,88 +408,109 @@ export default function StudentAttemptPage() {
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="flex-1 max-w-4xl mx-auto w-full p-6 sm:p-8 flex flex-col">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-                    {/* Progress Bar (at top of card) */}
-                    <div className="w-full bg-slate-100 h-1">
-                        <div
-                            className="bg-blue-600 h-1 transition-all duration-300 ease-out"
-                            style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
-                        ></div>
-                    </div>
+            {/* Main Content Layout */}
+            <main className="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex gap-8 align-start">
 
-                    <div className="flex-1 p-8 sm:p-10 flex flex-col justify-center">
-                        <h2 className="text-xl sm:text-2xl font-serif sm:font-sans font-medium text-slate-900 leading-relaxed mb-8">
-                            {currentQuestion.question_text}
-                        </h2>
-
-                        <div className="space-y-4 max-w-2xl">
-                            {currentQuestion.options.map((option, idx) => {
-                                const isSelected = selectedOption === option;
-                                return (
-                                    <label
-                                        key={idx}
-                                        className={`
-                                        relative flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 group
-                                        ${isSelected
-                                                ? 'border-blue-600 bg-blue-50/50 shadow-sm'
-                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                            }
-                                        ${isTimeUp ? 'opacity-50 cursor-not-allowed grayscale' : ''}
-                                    `}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name={`question-${currentQuestion.id}`}
-                                            value={option}
-                                            checked={isSelected}
-                                            onChange={() => handleOptionSelect(option)}
-                                            disabled={isTimeUp}
-                                            className="sr-only"
-                                        />
-                                        <div className={`
-                                        w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 flex-shrink-0 transition-colors
-                                        ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 group-hover:border-slate-400'}
-                                    `}>
-                                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                                        </div>
-                                        <span className={`text-base font-medium ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
-                                            {option}
-                                        </span>
-                                    </label>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Footer Controls */}
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm text-slate-500">
-                        <div>
-                            {/* Placeholder for "Prev" if we allowed it, but usually linear exams don't allow backtracking in some modes. 
-                                 Keeping it simple as per strict "Next only" implication of logic. 
-                             */}
+                {/* Question Area */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+                        {/* Progress Bar (at top of card) */}
+                        <div className="w-full bg-slate-100 h-1">
+                            <div
+                                className="bg-blue-600 h-1 transition-all duration-300 ease-out"
+                                style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                            ></div>
                         </div>
 
-                        <button
-                            onClick={handleNext}
-                            disabled={!selectedOption || submitting || isTimeUp}
-                            className={`
-                                flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm shadow-sm transition-all transform active:scale-[0.98]
-                                ${(!selectedOption || submitting || isTimeUp)
-                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-transparent'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                        <div className="flex-1 p-6 sm:p-10 flex flex-col justify-center">
+                            <h2 className="text-xl sm:text-2xl font-serif sm:font-sans font-medium text-slate-900 leading-relaxed mb-8">
+                                {currentQuestion.question_text}
+                            </h2>
+
+                            <div className="space-y-4 max-w-2xl">
+                                {currentQuestion.options.map((option, idx) => {
+                                    const isSelected = selectedOption === option;
+                                    return (
+                                        <label
+                                            key={idx}
+                                            className={`
+                                            relative flex items-center p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 group select-none
+                                            ${isSelected
+                                                    ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                                                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                }
+                                            ${isTimeUp ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+                                        `}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name={`question-${currentQuestion.id}`}
+                                                value={option}
+                                                checked={isSelected}
+                                                onChange={() => handleOptionSelect(option)}
+                                                disabled={isTimeUp}
+                                                className="sr-only"
+                                            />
+                                            <div className={`
+                                            w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 flex-shrink-0 transition-colors
+                                            ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 group-hover:border-slate-400'}
+                                        `}>
+                                                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                                            </div>
+                                            <span className={`text-base font-medium ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
+                                                {option}
+                                            </span>
+                                        </label>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Footer Controls */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm text-slate-500">
+                            {/* Mark for Review Button */}
+                            <button
+                                onClick={() => toggleMarkForReview(currentQuestion.id)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${markedQuestions.has(currentQuestion.id)
+                                        ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                                    }`}
+                            >
+                                <AlertCircle size={18} />
+                                {markedQuestions.has(currentQuestion.id) ? 'Marked for Review' : 'Mark for Review'}
+                            </button>
+
+                            <button
+                                onClick={handleNext}
+                                disabled={!selectedOption || submitting || isTimeUp}
+                                className={`
+                                    flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm shadow-sm transition-all transform active:scale-[0.98]
+                                    ${(!selectedOption || submitting || isTimeUp)
+                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-transparent'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                {submitting
+                                    ? 'Saving...'
+                                    : (isLastQuestion ? 'Submit Final Answer' : 'Next Question')
                                 }
-                            `}
-                        >
-                            {submitting
-                                ? 'Saving...'
-                                : (isLastQuestion ? 'Submit Final Answer' : 'Next Question')
-                            }
-                            {!submitting && (isLastQuestion ? <CheckCircle size={18} /> : <ChevronRight size={18} />)}
-                        </button>
+                                {!submitting && (isLastQuestion ? <CheckCircle size={18} /> : <ChevronRight size={18} />)}
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                {/* Question Navigator */}
+                <QuestionNavigator
+                    questions={questions}
+                    currentQuestion={currentQuestionIndex}
+                    answers={savedAnswers}
+                    visited={visitedQuestions}
+                    marked={markedQuestions}
+                    onNavigate={(idx) => setCurrentQuestionIndex(idx)}
+                />
+
             </main>
         </div>
     );
